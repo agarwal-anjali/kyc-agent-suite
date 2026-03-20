@@ -1,0 +1,10 @@
+{
+  "last_updated": "2024-10",
+  "blacklist": ["PRK", "IRN"],
+  "greylist": [
+    "BLR", "MMR", "RUS", "SYR", "YEM", "ZWE",
+    "AFG", "CAF", "COD", "HTI", "LBY", "MLI",
+    "MOZ", "NGA", "PAK", "SOM", "SDN", "TJK", "TZA", "UGA"
+  ],
+  "source": "https://www.fatf-gafi.org/en/topics/high-risk-and-other-monitored-jurisdictions.html"
+}
