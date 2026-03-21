@@ -62,18 +62,17 @@ class OrchestratorAgent:
             # Step 1: Document Intelligence
             # Only accepts one document as primary identity document
             log.info("orchestrator.invoking_document_intelligence")
-            primary_doc = state.documents_b64[0]
-            doc_output = await self._doc_agent.analyse(primary_doc)
-            state.document_intelligence = doc_output
+            doc_outputs = await self._analyse_documents_parallel(state.get_documents_b64())
+            state.document_intelligence = doc_outputs
 
             # Step 2: Regulatory Retrieval
             log.info("orchestrator.invoking_regulatory_retrieval")
-            reg_output = await self._reg_agent.retrieve(doc_output, state.query)
+            reg_output = await self._reg_agent.retrieve(doc_outputs, state.query)
             state.regulatory_retrieval = reg_output
 
             # Step 3: Risk Scoring
             log.info("orchestrator.invoking_risk_scoring")
-            risk_output = await self._risk_agent.score(doc_output, reg_output)
+            risk_output = await self._risk_agent.score(doc_outputs, reg_output)
             state.risk_scoring = risk_output
 
             # Step 4: Report Summarisation
@@ -103,7 +102,12 @@ class OrchestratorAgent:
 
         try:
             yield {"event": "status", "data": "Running document analysis..."}
-            doc_output = await self._doc_agent.analyse(state.documents_b64[0])
+            doc_count = len(state.get_documents_b64())
+            yield {
+                "event": "status",
+                "data": f"Analysing {doc_count} document{'s' if doc_count > 1 else ''} in parallel...",
+            }
+            doc_outputs = await self._analyse_documents_parallel(state.get_documents_b64())
             state.document_intelligence = doc_output
             yield {"event": "status", "data": "Document analysis complete."}
 
