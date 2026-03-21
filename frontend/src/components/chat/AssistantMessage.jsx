@@ -1,4 +1,5 @@
-import { Shield, BarChart3, FileSearch } from 'lucide-react'
+import { useMemo } from 'react'
+import { Shield, BarChart3 } from 'lucide-react'
 import IntentBadge    from '../ui/IntentBadge'
 import PipelineTracker from '../ui/PipelineTracker'
 import VerdictBadge   from '../ui/VerdictBadge'
@@ -6,6 +7,7 @@ import RiskBadge      from '../ui/RiskBadge'
 import ScoreBar       from '../ui/ScoreBar'
 import Collapsible    from '../ui/Collapsible'
 import { formatTime } from '../../lib/utils'
+import { renderMarkdownToHtml } from '../../lib/markdown'
 
 function ThinkingDots() {
   return (
@@ -26,6 +28,7 @@ export default function AssistantMessage({ message }) {
     content, isStreaming, intent, plan, planSteps,
     stepStatuses, riskScore, verdict, timestamp,
   } = message
+  const renderedContent = useMemo(() => renderMarkdownToHtml(content), [content])
 
   const showThinking = isStreaming && !content && !plan
 
@@ -74,12 +77,11 @@ export default function AssistantMessage({ message }) {
           ) : (
             <div style={{
               color: 'var(--text-secondary)', fontSize: 13,
-              lineHeight: 1.8, whiteSpace: 'pre-wrap',
+              lineHeight: 1.8,
             }}
-              className={isStreaming && content ? 'streaming-cursor' : ''}
-            >
-              {content}
-            </div>
+              className={`markdown-body ${isStreaming && content ? 'streaming-cursor' : ''}`}
+              dangerouslySetInnerHTML={{ __html: renderedContent }}
+            />
           )}
 
           {/* Risk score breakdown */}
