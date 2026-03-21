@@ -46,8 +46,8 @@ export default function ChatInput({
 
   return (
     <>
-      <div style={{ padding: '10px 16px 18px', borderTop: '1px solid var(--border)' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ padding: '10px 16px 18px'}}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
 
           {/* Attachment pills */}
           {hasAttachments && (
@@ -126,6 +126,7 @@ export default function ChatInput({
                 fontSize: 14, background: 'none',
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-body)',
+                padding: '6px 8px',
               }}
             />
 

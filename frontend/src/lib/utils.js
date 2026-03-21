@@ -27,3 +27,10 @@ export const formatDate = (date) => {
 
 export const truncate = (str, n = 50) =>
   str?.length > n ? str.slice(0, n) + '…' : str
+
+export const truncateWords = (str, wordCount = 8) => {
+  if (!str) return ''
+  const words = str.trim().split(/\s+/)
+  if (words.length <= wordCount) return words.join(' ')
+  return `${words.slice(0, wordCount).join(' ')}…`
+}

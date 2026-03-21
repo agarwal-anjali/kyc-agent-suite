@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { createSession } from '../lib/api'
-import { generateId, formatDate } from '../lib/utils'
+import { generateId, formatDate, truncateWords } from '../lib/utils'
 import { USE_MOCK } from '../constants'
 
 export function useSession() {
@@ -31,7 +31,7 @@ export function useSession() {
 
   const updatePreview = useCallback((sessionId, preview) => {
     setSessions(prev =>
-      prev.map(s => s.id === sessionId ? { ...s, preview } : s)
+      prev.map(s => s.id === sessionId ? { ...s, preview: truncateWords(preview, 8) } : s)
     )
   }, [])
 

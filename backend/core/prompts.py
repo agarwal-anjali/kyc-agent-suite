@@ -149,6 +149,7 @@ Respond appropriately for the request type below.
 
 Request Type: {intent}
 Query: {query}
+Report Generation Date: {report_generation_date}
 
 {customer_context}
 
@@ -173,6 +174,7 @@ Response guidelines:
 
 Use clear, professional language. Be specific — reference field values, regulation
 names, and scores where available.
+If you include a date in the response, use the Report Generation Date above.
 """
 
 DOCUMENT_CONTEXT_BLOCK = """

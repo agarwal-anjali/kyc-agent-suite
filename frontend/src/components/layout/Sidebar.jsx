@@ -16,7 +16,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
 
   return (
     <aside style={{
-      width: collapsed ? 52 : 220, flexShrink: 0,
+      width: collapsed ? 56 : 300, flexShrink: 0,
       background: 'var(--bg-surface)', borderRight: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column',
       transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
@@ -123,9 +123,13 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
                       flexShrink: 0,
                     }} />
                     <span style={{
-                      fontSize: 12, lineHeight: 1.4,
+                      fontSize: 12, lineHeight: 1.45,
                       color: s.id === activeSessionId ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
                     }}>
                       {s.preview}
                     </span>

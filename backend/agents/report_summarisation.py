@@ -53,6 +53,8 @@ class ReportSummarisationAgent:
 
     def _build_prompt(self, state: KYCState, verdict: KYCVerdict) -> str:
         effective_customer = state.get_effective_customer_details()
+        now = datetime.now(timezone.utc)
+        report_generation_date = f"{now.strftime('%B')} {now.day}, {now.year}"
 
         customer_context = (
             CUSTOMER_CONTEXT_BLOCK.format(customer_details=effective_customer.to_context_string())
@@ -89,6 +91,7 @@ class ReportSummarisationAgent:
         return REPORT_SUMMARISATION_PROMPT.format(
             intent=state.execution_plan.intent.value if state.execution_plan else "generic_compliance",
             query=state.query,
+            report_generation_date=report_generation_date,
             customer_context=customer_context,
             conditional_context="\n\n".join(conditional_sections) if conditional_sections else "No additional analytical context available.",
             history_context=HISTORY_CONTEXT_BLOCK.format(history_summary=history_summary),
