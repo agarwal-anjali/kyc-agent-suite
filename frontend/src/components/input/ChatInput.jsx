@@ -46,8 +46,8 @@ export default function ChatInput({
 
   return (
     <>
-      <div style={{ padding: '10px 16px 38px' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <div style={{ padding: '10px 16px 28px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
 
           {/* Attachment pills */}
           {hasAttachments && (
@@ -73,7 +73,7 @@ export default function ChatInput({
             onDrop={handleDrop}
             style={{
               display: 'flex', alignItems: 'flex-end', gap: 8,
-              background: 'var(--bg-card)',
+              background: 'var(--bg-surface)',
               border: `1px solid ${isDragging ? 'var(--gold)' : 'var(--border-bright)'}`,
               borderRadius: 'var(--radius-md)', padding: '10px 12px',
               transition: 'border-color 0.2s',
@@ -90,7 +90,7 @@ export default function ChatInput({
                 transition: 'color 0.2s',
               }}
             >
-              <Paperclip size={16} />
+              <Paperclip size={18} />
             </button>
             <input
               ref={fileInputRef} type="file"
@@ -109,7 +109,7 @@ export default function ChatInput({
                 transition: 'color 0.2s',
               }}
             >
-              <User size={16} />
+              <User size={18} />
             </button>
 
             {/* Textarea */}
@@ -150,7 +150,7 @@ export default function ChatInput({
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
-            Drag & drop · Enter to send · Shift+Enter for new line · Max {MAX_FILES} files
+            Can also drag & drop · Max {MAX_FILES} files · Enter to send · Shift+Enter for new line 
           </p>
         </div>
       </div>

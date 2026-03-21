@@ -10,9 +10,9 @@ export default function MessageList({ messages }) {
   }, [messages])
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 0' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '60px 0 10px' }}>
+      <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 15px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           {messages.map(m =>
             m.type === 'user'
               ? <UserMessage      key={m.id} message={m} />

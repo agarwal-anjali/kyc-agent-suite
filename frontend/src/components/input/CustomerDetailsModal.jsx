@@ -50,7 +50,7 @@ export default function CustomerDetailsModal({ value, onChange, onClose }) {
     >
       <div
         style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border-bright)',
+          background: 'var(--bg-surface)', border: '1px solid var(--border-bright)',
           borderRadius: 'var(--radius-lg)', padding: 28,
           width: 480, maxWidth: '92vw', maxHeight: '85vh', overflowY: 'auto',
           boxShadow: '0 24px 64px rgba(0,0,0,0.5)',

@@ -4,13 +4,13 @@
 /* ── Design tokens ───────────────────────────────────────────────────────── */
 :root {
   --bg-base:       #0d0f14;
-  --bg-surface:    #141720;
+  --bg-surface:    #040507;
   --bg-card:       #1a1e2a;
   --bg-hover:      #1f2435;
   --bg-active:     #242840;
 
   --border:        #252b3b;
-  --border-bright: #303650;
+  --border-bright: #1f2334;
 
   --text-primary:  #e8eaf0;
   --text-secondary:#8b92a5;

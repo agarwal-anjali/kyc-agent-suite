@@ -60,7 +60,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
       )}
 
       {/* New chat */}
-      <div style={{ padding: collapsed ? '10px 8px' : '10px 10px' }}>
+      <div style={{ padding: collapsed ? '16px 8px' : '16px 10px' }}>
         <button
           onClick={onNewChat}
           title="New chat"
@@ -89,7 +89,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
             <div key={date}>
               <p style={{
                 fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
-                letterSpacing: '0.06em', padding: '10px 6px 4px', textTransform: 'uppercase',
+                letterSpacing: '0.06em', padding: '10px 6px 8px', textTransform: 'uppercase',
               }}>
                 {date}
               </p>

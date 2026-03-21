@@ -300,7 +300,7 @@ MOCK_RESPONSES = {
         "reasoning": "Query is a policy question about CDD requirements — no documents needed.",
         "lines": [
             "COMPLIANCE ANSWER — CDD Requirements under MAS Notice 626",
-            "─" * 52,
+            "─" * 46,
             "",
             "Under MAS Notice 626, all financial institutions in Singapore are required",
             "to perform Customer Due Diligence (CDD) for every customer relationship.",
@@ -357,7 +357,7 @@ MOCK_RESPONSES = {
         "reasoning": "Query is about PEP-related EDD requirements — a policy question.",
         "lines": [
             "COMPLIANCE ANSWER — Enhanced Due Diligence for PEPs in Singapore",
-            "─" * 56,
+            "─" * 46,
             "",
             "DEFINITION OF A PEP",
             "Under MAS Notice 626 Paragraph 9 and FATF Recommendation 12, a",

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Sidebar    from './components/layout/Sidebar'
 import ChatLayout from './components/layout/ChatLayout'
 import { useSession }    from './hooks/useSession'
@@ -12,9 +12,14 @@ export default function App() {
   } = useSession()
 
   const [customerDetails, setCustomerDetails] = useState(null)
+  const hasInitialisedSession = useRef(false)
 
   // Initialise with one session on mount
-  useEffect(() => { newSession() }, [newSession])
+  useEffect(() => {
+    if (hasInitialisedSession.current) return
+    hasInitialisedSession.current = true
+    newSession()
+  }, [newSession])
 
   // Per-session chat state
   const onFirstMessage = useCallback((query) => {

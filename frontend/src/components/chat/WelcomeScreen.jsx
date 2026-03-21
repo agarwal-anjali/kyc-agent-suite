@@ -47,7 +47,7 @@ export default function WelcomeScreen({ onSuggestion }) {
         }}
       >
         Compliance Q&A, document analysis, and full KYC checks —
-        powered by a multi-agent AI system.
+        powered by a multi-agent system.
       </p>
 
       {/* Suggestions */}
