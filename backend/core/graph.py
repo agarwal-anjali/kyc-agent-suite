@@ -102,6 +102,75 @@ def _empty_doc_output() -> DocumentIntelligenceOutput:
     )
 
 
+def _query_mentions_kyc(text: str) -> bool:
+    lowered = text.lower()
+    return any(term in lowered for term in [
+        "kyc", "know your customer", "onboard", "onboarding",
+        "risk assessment", "verify this customer",
+    ])
+
+
+def _query_is_policy_follow_up(text: str) -> bool:
+    lowered = text.lower()
+    return any(term in lowered for term in [
+        "mas notice", "cdd", "edd", "pep", "policy", "regulation",
+        "what are", "what is", "which regulation", "requirements",
+    ])
+
+
+def _query_supplies_requested_info(state: KYCState) -> bool:
+    return bool(
+        state.has_documents()
+        or (state.customer_details and not state.customer_details.is_empty())
+    )
+
+
+def _postprocess_plan(state: KYCState, plan: ExecutionPlan) -> ExecutionPlan:
+    ctx = state.session_context
+    if not ctx:
+        return plan
+
+    pending_intent = ctx.get_pending_follow_up_intent()
+    query_lower = state.query.lower()
+
+    if pending_intent and _query_supplies_requested_info(state) and not _query_is_policy_follow_up(query_lower):
+        if plan.intent in {QueryIntent.DOCUMENT_ANALYSIS, QueryIntent.GENERIC_COMPLIANCE, QueryIntent.INSUFFICIENT_INFO}:
+            if pending_intent == QueryIntent.KYC_CHECK:
+                return ExecutionPlan(
+                    intent=QueryIntent.KYC_CHECK,
+                    steps=[
+                        AgentStep.DOCUMENT_INTELLIGENCE,
+                        AgentStep.REGULATORY_RETRIEVAL,
+                        AgentStep.RISK_SCORING,
+                        AgentStep.REPORT_SUMMARISATION,
+                    ],
+                    reasoning="Adjusted plan: user supplied the missing information needed to continue the earlier KYC request.",
+                    reusing_from_session=["Prior turn requested additional information before running KYC."],
+                )
+            if pending_intent == QueryIntent.HYBRID:
+                return ExecutionPlan(
+                    intent=QueryIntent.HYBRID,
+                    steps=[
+                        AgentStep.DOCUMENT_INTELLIGENCE,
+                        AgentStep.REGULATORY_RETRIEVAL,
+                        AgentStep.REPORT_SUMMARISATION,
+                    ],
+                    reasoning="Adjusted plan: user supplied the missing information needed to continue the earlier analysis request.",
+                    reusing_from_session=["Prior turn requested additional information before continuing analysis."],
+                )
+
+    if _query_is_policy_follow_up(query_lower) and not _query_mentions_kyc(query_lower):
+        if plan.intent in {QueryIntent.KYC_CHECK, QueryIntent.DOCUMENT_ANALYSIS, QueryIntent.HYBRID}:
+            return ExecutionPlan(
+                intent=QueryIntent.GENERIC_COMPLIANCE,
+                steps=[AgentStep.REGULATORY_RETRIEVAL, AgentStep.REPORT_SUMMARISATION],
+                reasoning="Adjusted plan: current turn is a policy/compliance follow-up, so the system should answer the question rather than rerun KYC.",
+                reusing_from_session=["Conversation history and any established customer context relevant to the question."],
+            )
+
+    return plan
+
+
 # ── Node: Planning ─────────────────────────────────────────────────────────────
 
 async def node_plan(state: KYCState) -> KYCState:
@@ -143,6 +212,7 @@ async def node_plan(state: KYCState) -> KYCState:
         doc_labels=doc_labels or "none",
         customer_details=customer_this_turn,
         conversation_summary=ctx.get_recent_messages_summary() if ctx else "No prior messages.",
+        planning_context=ctx.get_planning_context_summary() if ctx else "No notable planning context.",
         session_customer_context=session_customer,
         session_doc_context=session_doc,
     )
@@ -165,18 +235,23 @@ async def node_plan(state: KYCState) -> KYCState:
         log.warning("graph.plan.llm_failed_using_fallback", error=str(e))
         plan = _fallback_plan(state)
 
-    state.execution_plan = plan
+    state.execution_plan = _postprocess_plan(state, plan)
     log.info(
         "graph.plan.completed",
-        intent=plan.intent,
-        steps=[s.value for s in plan.steps],
-        reasoning=plan.reasoning,
+        intent=state.execution_plan.intent,
+        steps=[s.value for s in state.execution_plan.steps],
+        reasoning=state.execution_plan.reasoning,
     )
     return state
 
 
 def _fallback_plan(state: KYCState) -> ExecutionPlan:
     """Rule-based fallback when the planning LLM fails."""
+    query_lower = state.query.lower()
+    pending_intent = (
+        state.session_context.get_pending_follow_up_intent()
+        if state.session_context else None
+    )
     has_docs = (
         state.has_documents()
         or (state.session_context and state.session_context.last_document_intelligence)
@@ -186,14 +261,51 @@ def _fallback_plan(state: KYCState) -> ExecutionPlan:
         or (state.session_context and state.session_context.customer_details)
     )
 
-    if "kyc" in state.query.lower() and not has_docs and not has_customer:
+    # If the prior assistant asked for missing info and the user is now supplying it,
+    # continue the earlier task even if the current message is short or non-specific.
+    if pending_intent and _query_supplies_requested_info(state) and not _query_is_policy_follow_up(query_lower):
+        if pending_intent == QueryIntent.KYC_CHECK:
+            return ExecutionPlan(
+                intent=QueryIntent.KYC_CHECK,
+                steps=[
+                    AgentStep.DOCUMENT_INTELLIGENCE,
+                    AgentStep.REGULATORY_RETRIEVAL,
+                    AgentStep.RISK_SCORING,
+                    AgentStep.REPORT_SUMMARISATION,
+                ],
+                reasoning="Fallback: user supplied missing information for the prior KYC request.",
+                reusing_from_session=["Prior turn requested additional information before running KYC."],
+            )
+        if pending_intent == QueryIntent.HYBRID:
+            return ExecutionPlan(
+                intent=QueryIntent.HYBRID,
+                steps=[
+                    AgentStep.DOCUMENT_INTELLIGENCE,
+                    AgentStep.REGULATORY_RETRIEVAL,
+                    AgentStep.REPORT_SUMMARISATION,
+                ],
+                reasoning="Fallback: user supplied missing information for the prior hybrid request.",
+                reusing_from_session=["Prior turn requested additional information before continuing analysis."],
+            )
+
+    # If the current turn is clearly a policy/compliance follow-up, don't rerun KYC
+    # just because session context now contains documents and customer details.
+    if _query_is_policy_follow_up(query_lower) and not _query_mentions_kyc(query_lower):
+        return ExecutionPlan(
+            intent=QueryIntent.GENERIC_COMPLIANCE,
+            steps=[AgentStep.REGULATORY_RETRIEVAL, AgentStep.REPORT_SUMMARISATION],
+            reasoning="Fallback: current turn is a policy/compliance follow-up, so skipping full KYC re-execution.",
+            reusing_from_session=["Conversation history and any previously established customer context."],
+        )
+
+    if _query_mentions_kyc(query_lower) and not has_docs and not has_customer:
         return ExecutionPlan(
             intent=QueryIntent.INSUFFICIENT_INFO,
             steps=[],
             reasoning="KYC requested but no documents or customer details found.",
             missing_info=["Identity documents", "Customer details"],
         )
-    elif has_docs and ("kyc" in state.query.lower() or has_customer):
+    elif has_docs and (_query_mentions_kyc(query_lower) or has_customer):
         return ExecutionPlan(
             intent=QueryIntent.KYC_CHECK,
             steps=[
@@ -338,7 +450,11 @@ async def node_risk_scoring(state: KYCState) -> KYCState:
             "Risk scoring requires both document intelligence and regulatory retrieval."
         )
 
-    state.risk_scoring = await _risk_agent.score(doc_ctx, state.regulatory_retrieval)
+    state.risk_scoring = await _risk_agent.score(
+        doc_ctx,
+        state.regulatory_retrieval,
+        customer_details=state.get_effective_customer_details(),
+    )
     state.verdict      = VERDICT_MAP.get(state.risk_scoring.overall_risk_tier, KYCVerdict.REFER)
 
     log.info(

@@ -1,6 +1,6 @@
 // ── Dev toggle ────────────────────────────────────────────────────────────────
-// Flip to false when testing against real backend
-export const USE_MOCK = true
+// Set to true to use mock API endpoints and data for frontend development without invoking the agent.
+export const USE_MOCK = false
 
 // ── API endpoints ─────────────────────────────────────────────────────────────
 export const ENDPOINTS = {

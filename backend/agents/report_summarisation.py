@@ -19,6 +19,13 @@ from core.models import (
     RiskTier,
 )
 from core.prompts import REPORT_SUMMARISATION_PROMPT
+from core.prompts import (
+    CUSTOMER_CONTEXT_BLOCK,
+    DOCUMENT_CONTEXT_BLOCK,
+    REGULATORY_CONTEXT_BLOCK,
+    RISK_CONTEXT_BLOCK,
+    HISTORY_CONTEXT_BLOCK,
+)
 
 log = structlog.get_logger()
 
@@ -44,30 +51,68 @@ class ReportSummarisationAgent:
             streaming=True,
         )
 
+    def _build_prompt(self, state: KYCState, verdict: KYCVerdict) -> str:
+        effective_customer = state.get_effective_customer_details()
+
+        customer_context = (
+            CUSTOMER_CONTEXT_BLOCK.format(customer_details=effective_customer.to_context_string())
+            if effective_customer and not effective_customer.is_empty()
+            else "Customer Details:\nNone provided."
+        )
+
+        conditional_sections = []
+        if state.document_intelligence:
+            conditional_sections.append(
+                DOCUMENT_CONTEXT_BLOCK.format(
+                    document_intelligence=state.document_intelligence.model_dump_json(indent=2),
+                )
+            )
+        if state.regulatory_retrieval:
+            conditional_sections.append(
+                REGULATORY_CONTEXT_BLOCK.format(
+                    regulatory_retrieval=state.regulatory_retrieval.model_dump_json(indent=2),
+                )
+            )
+        if state.risk_scoring:
+            conditional_sections.append(
+                RISK_CONTEXT_BLOCK.format(
+                    risk_scoring=state.risk_scoring.model_dump_json(indent=2),
+                    verdict=verdict.value,
+                )
+            )
+
+        history_summary = (
+            state.session_context.get_recent_messages_summary()
+            if state.session_context else "No prior messages."
+        )
+
+        return REPORT_SUMMARISATION_PROMPT.format(
+            intent=state.execution_plan.intent.value if state.execution_plan else "generic_compliance",
+            query=state.query,
+            customer_context=customer_context,
+            conditional_context="\n\n".join(conditional_sections) if conditional_sections else "No additional analytical context available.",
+            history_context=HISTORY_CONTEXT_BLOCK.format(history_summary=history_summary),
+        )
+
     async def summarise(self, state: KYCState) -> KYCState:
         """
         Generate the KYC report and attach verdict and timestamp to state.
         """
-        log.info("report_summarisation_agent.started", customer_id=state.customer_id)
-
-        verdict = VERDICT_MAP.get(
-            state.risk_scoring.overall_risk_tier, KYCVerdict.REFER
-        )
-
         customer_id = (
-            state.customer_details.customer_id
-            if state.customer_details and state.customer_details.customer_id
+            state.get_effective_customer_details().customer_id
+            if state.get_effective_customer_details()
+            and state.get_effective_customer_details().customer_id
             else f"SESSION-{state.session_id[:8].upper()}"
         )
+        log.info("report_summarisation_agent.started", customer_id=customer_id)
 
-        prompt = REPORT_SUMMARISATION_PROMPT.format(
-            customer_id=customer_id,
-            query=state.query,
-            document_intelligence=state.document_intelligence.model_dump_json(indent=2),
-            regulatory_retrieval=state.regulatory_retrieval.model_dump_json(indent=2),
-            risk_scoring=state.risk_scoring.model_dump_json(indent=2),
-            verdict=verdict.value,
+        verdict = (
+            VERDICT_MAP.get(state.risk_scoring.overall_risk_tier, KYCVerdict.REFER)
+            if state.risk_scoring
+            else (state.verdict or KYCVerdict.REFER)
         )
+
+        prompt = self._build_prompt(state, verdict)
 
         response = await self._llm.ainvoke([HumanMessage(content=prompt)])
 
@@ -80,7 +125,7 @@ class ReportSummarisationAgent:
 
         log.info(
             "report_summarisation_agent.completed",
-            customer_id=state.customer_id,
+            customer_id=customer_id,
             verdict=verdict,
         )
         return state
@@ -89,18 +134,13 @@ class ReportSummarisationAgent:
         """
         Stream the report token by token for SSE endpoint.
         """
-        verdict = VERDICT_MAP.get(
-            state.risk_scoring.overall_risk_tier, KYCVerdict.REFER
+        verdict = (
+            VERDICT_MAP.get(state.risk_scoring.overall_risk_tier, KYCVerdict.REFER)
+            if state.risk_scoring
+            else (state.verdict or KYCVerdict.REFER)
         )
 
-        prompt = REPORT_SUMMARISATION_PROMPT.format(
-            customer_id=state.customer_id,
-            query=state.query,
-            document_intelligence=state.document_intelligence.model_dump_json(indent=2),
-            regulatory_retrieval=state.regulatory_retrieval.model_dump_json(indent=2),
-            risk_scoring=state.risk_scoring.model_dump_json(indent=2),
-            verdict=verdict.value,
-        )
+        prompt = self._build_prompt(state, verdict)
 
         async for chunk in self._llm.astream([HumanMessage(content=prompt)]):
             token = self._extract_text(chunk.content)

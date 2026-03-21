@@ -18,6 +18,9 @@ Customer details provided this turn: {customer_details}
 Prior conversation summary:
 {conversation_summary}
 
+Most relevant execution context:
+{planning_context}
+
 Customer context from prior turns:
 {session_customer_context}
 
@@ -60,6 +63,8 @@ Step 2 — Check what information is available:
   - Does the query require documents? Are any available (this turn or session)?
   - Does the query require customer details? Are any available?
   - Can session context fill any gaps?
+  - Is the user supplying information requested in the immediately prior turn?
+  - Or is the user now asking a new follow-up question that should override the prior task?
 
 Step 3 — Determine EXECUTION STEPS:
   generic_compliance  → [regulatory_retrieval, report_summarisation]

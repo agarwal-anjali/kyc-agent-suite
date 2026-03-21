@@ -49,6 +49,7 @@ class RiskScoringAgent:
         self,
         doc_output: DocumentIntelligenceOutput,
         reg_output: RegulatoryRetrievalOutput,
+        customer_details=None,
     ) -> RiskScoreBreakdown:
         """
         Produce a multi-dimensional risk score for the customer.
@@ -67,6 +68,11 @@ class RiskScoringAgent:
 
         prompt = RISK_SCORING_PROMPT.format(
             document_intelligence=doc_output.model_dump_json(indent=2),
+            customer_details=(
+                customer_details.to_context_string()
+                if customer_details and not customer_details.is_empty()
+                else "None provided."
+            ),
             regulatory_retrieval=reg_output.model_dump_json(indent=2),
         )
 

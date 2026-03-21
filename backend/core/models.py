@@ -178,6 +178,17 @@ class ChatMessage(BaseModel):
     document_count: int = 0
     customer_details: CustomerDetails | None = None
 
+    def infer_intent_from_content(self) -> QueryIntent | None:
+        text = self.content.lower()
+
+        if any(term in text for term in ["kyc", "onboard", "onboarding", "customer risk", "risk assessment"]):
+            return QueryIntent.KYC_CHECK
+        if any(term in text for term in ["document", "passport", "licence", "license", "pdf", "extract"]):
+            return QueryIntent.DOCUMENT_ANALYSIS
+        if any(term in text for term in ["mas notice", "cdd", "edd", "pep", "regulation", "policy", "fatf"]):
+            return QueryIntent.GENERIC_COMPLIANCE
+        return None
+
 
 class SessionContext(BaseModel):
     """
@@ -219,6 +230,57 @@ class SessionContext(BaseModel):
             intent_tag = f" [{m.intent.value}]" if m.intent else ""
             lines.append(f"{prefix}{intent_tag}: {m.content[:150]}...")
         return "\n".join(lines)
+
+    def get_last_user_message(self) -> ChatMessage | None:
+        for message in reversed(self.messages):
+            if message.role == ChatRole.USER:
+                return message
+        return None
+
+    def get_last_assistant_message(self) -> ChatMessage | None:
+        for message in reversed(self.messages):
+            if message.role == ChatRole.ASSISTANT:
+                return message
+        return None
+
+    def get_pending_follow_up_intent(self) -> QueryIntent | None:
+        assistant = self.get_last_assistant_message()
+        if not assistant or not assistant.execution_plan:
+            return None
+
+        if assistant.execution_plan.intent == QueryIntent.INSUFFICIENT_INFO:
+            for message in reversed(self.messages):
+                if message.role == ChatRole.USER:
+                    inferred = message.infer_intent_from_content()
+                    if inferred in {
+                        QueryIntent.KYC_CHECK,
+                        QueryIntent.HYBRID,
+                        QueryIntent.DOCUMENT_ANALYSIS,
+                    }:
+                        return inferred
+            return QueryIntent.KYC_CHECK
+
+        return None
+
+    def get_planning_context_summary(self) -> str:
+        last_user = self.get_last_user_message()
+        last_assistant = self.get_last_assistant_message()
+        pending_intent = self.get_pending_follow_up_intent()
+
+        lines = []
+        if pending_intent:
+            lines.append(f"Pending prior request awaiting more info: {pending_intent.value}")
+        if last_user:
+            lines.append(f"Last user message: {last_user.content[:180]}")
+        if last_assistant and last_assistant.execution_plan:
+            lines.append(
+                "Last assistant execution: "
+                f"{last_assistant.execution_plan.intent.value} "
+                f"via {[step.value for step in last_assistant.execution_plan.steps]}"
+            )
+        if self.last_verdict:
+            lines.append(f"Most recent KYC verdict in session: {self.last_verdict.value}")
+        return "\n".join(lines) if lines else "No notable planning context."
 
     def has_customer_context(self) -> bool:
         return (
