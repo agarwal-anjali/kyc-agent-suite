@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { sendMessage }   from '../lib/api'
 import { parseSSEStream } from '../lib/sse'
 import { toBase64 }      from '../lib/utils'
@@ -17,7 +17,6 @@ export function useChat({ sessionId, onFirstMessage }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState(null)
-  const abortRef = useRef(null)
 
   const clearMessages = useCallback(() => setMessages([]), [])
 

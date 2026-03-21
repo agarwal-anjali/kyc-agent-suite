@@ -1,13 +1,13 @@
 import { X } from 'lucide-react'
-import { generateId } from '../../lib/utils'
 
 const FIELDS = [
-  { key: 'full_name',   label: 'Full Name',             type: 'text',   span: 2 },
-  { key: 'nationality', label: 'Nationality (ISO)',      type: 'text',   span: 1 },
-  { key: 'age',         label: 'Age',                   type: 'number', span: 1 },
-  { key: 'address',     label: 'Current Address',       type: 'text',   span: 2 },
-  { key: 'occupation',  label: 'Occupation',            type: 'text',   span: 1 },
-  { key: 'email',       label: 'Email',                 type: 'email',  span: 1 },
+  { key: 'customer_id', label: 'Customer ID', type: 'text',   span: 2 },
+  { key: 'full_name',   label: 'Full Name',              type: 'text',   span: 2 },
+  { key: 'nationality', label: 'Nationality (ISO)',       type: 'text',   span: 1 },
+  { key: 'age',         label: 'Age',                    type: 'number', span: 1 },
+  { key: 'address',     label: 'Current Address',        type: 'text',   span: 2 },
+  { key: 'occupation',  label: 'Occupation',             type: 'text',   span: 1 },
+  { key: 'email',       label: 'Email',                  type: 'email',  span: 1 },
 ]
 
 const inputStyle = {
@@ -26,20 +26,15 @@ const labelStyle = {
 }
 
 export default function CustomerDetailsModal({ value, onChange, onClose }) {
-  const initial = value || {
-    customer_id: `CUST-${generateId()}`,
-    full_name: '', age: '', nationality: '',
-    address: '', occupation: '', email: '',
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
     const fd   = new FormData(e.target)
     const data = Object.fromEntries(fd.entries())
-    data.customer_id = initial.customer_id
-    // Remove empty strings
+    // Remove empty strings — treat them as null
     Object.keys(data).forEach(k => { if (!data[k]) data[k] = null })
-    onChange(data)
+    // If everything is null after cleanup, pass null instead of an empty object
+    const hasAnyValue = Object.values(data).some(v => v !== null)
+    onChange(hasAnyValue ? data : null)
     onClose()
   }
 
@@ -78,16 +73,6 @@ export default function CustomerDetailsModal({ value, onChange, onClose }) {
           </button>
         </div>
 
-        {/* Customer ID (read-only) */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>Customer ID</label>
-          <input
-            readOnly value={initial.customer_id}
-            style={{ ...inputStyle, color: 'var(--text-muted)', cursor: 'default' }}
-          />
-        </div>
-
-        {/* Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {FIELDS.map(f => (
@@ -97,6 +82,7 @@ export default function CustomerDetailsModal({ value, onChange, onClose }) {
                   type={f.type}
                   name={f.key}
                   defaultValue={value?.[f.key] || ''}
+                  placeholder={f.key === 'customer_id' ? 'e.g. CUST-001 (auto-assigned if blank)' : ''}
                   style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
                   onBlur={e =>  { e.target.style.borderColor = 'var(--border)' }}

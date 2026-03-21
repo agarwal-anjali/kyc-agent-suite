@@ -60,7 +60,7 @@ class CustomerDetails(BaseModel):
     All fields are optional — the user fills in what they know.
     The orchestrator uses whatever is provided to supplement document extraction.
     """
-    customer_id:  str = Field(default_factory=lambda: f"CUST-{uuid.uuid4().hex[:6].upper()}")
+    customer_id:  str | None = None
     full_name:    str | None = None
     age:          int | None = None
     nationality:  str | None = None

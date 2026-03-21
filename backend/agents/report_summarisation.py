@@ -54,8 +54,14 @@ class ReportSummarisationAgent:
             state.risk_scoring.overall_risk_tier, KYCVerdict.REFER
         )
 
+        customer_id = (
+            state.customer_details.customer_id
+            if state.customer_details and state.customer_details.customer_id
+            else f"SESSION-{state.session_id[:8].upper()}"
+        )
+
         prompt = REPORT_SUMMARISATION_PROMPT.format(
-            customer_id=state.customer_id,
+            customer_id=customer_id,
             query=state.query,
             document_intelligence=state.document_intelligence.model_dump_json(indent=2),
             regulatory_retrieval=state.regulatory_retrieval.model_dump_json(indent=2),

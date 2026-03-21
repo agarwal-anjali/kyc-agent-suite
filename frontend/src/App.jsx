@@ -12,10 +12,9 @@ export default function App() {
   } = useSession()
 
   const [customerDetails, setCustomerDetails] = useState(null)
-  const [chatsBySession, setChatsBySession]   = useState({})
 
   // Initialise with one session on mount
-  useEffect(() => { newSession() }, [])
+  useEffect(() => { newSession() }, [newSession])
 
   // Per-session chat state
   const onFirstMessage = useCallback((query) => {
@@ -48,10 +47,6 @@ export default function App() {
   const handleSend = ({ query, files, customerDetails }) => {
     sendChat({ query, files, customerDetails })
   }
-
-  // Pre-fill query from welcome screen suggestion
-  const [prefillQuery, setPrefillQuery] = useState('')
-
   const handleSuggestion = (text) => {
     // We fire it as a message directly
     sendChat({ query: text, files: [], customerDetails })
