@@ -46,7 +46,7 @@ export default function ChatInput({
 
   return (
     <>
-      <div style={{ padding: '10px 16px 18px'}}>
+      <div style={{ padding: '10px 16px 38px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
 
           {/* Attachment pills */}
@@ -61,7 +61,7 @@ export default function ChatInput({
 
           {/* File error */}
           {fileError && (
-            <p style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
+            <p style={{ fontSize: 14, color: 'var(--danger)', fontFamily: 'var(--font-mono)', margin: '4px 0' }}>
               {fileError}
             </p>
           )}
@@ -75,7 +75,7 @@ export default function ChatInput({
               display: 'flex', alignItems: 'flex-end', gap: 8,
               background: 'var(--bg-card)',
               border: `1px solid ${isDragging ? 'var(--gold)' : 'var(--border-bright)'}`,
-              borderRadius: 'var(--radius-md)', padding: '8px 10px',
+              borderRadius: 'var(--radius-md)', padding: '10px 12px',
               transition: 'border-color 0.2s',
               boxShadow: isDragging ? `0 0 0 3px var(--gold-dim)` : 'none',
             }}
@@ -85,7 +85,7 @@ export default function ChatInput({
               title={`Attach documents (max ${MAX_FILES})`}
               onClick={() => fileInputRef.current?.click()}
               style={{
-                flexShrink: 0, padding: 6, borderRadius: 6,
+                flexShrink: 0, padding: 7, borderRadius: 6,
                 color: files.length > 0 ? 'var(--gold)' : 'var(--text-muted)',
                 transition: 'color 0.2s',
               }}
@@ -104,7 +104,7 @@ export default function ChatInput({
               title={customerDetails ? 'Edit customer details' : 'Add customer details'}
               onClick={() => setShowModal(true)}
               style={{
-                flexShrink: 0, padding: 6, borderRadius: 6,
+                flexShrink: 0, padding: 7, borderRadius: 6,
                 color: customerDetails ? 'var(--gold)' : 'var(--text-muted)',
                 transition: 'color 0.2s',
               }}
@@ -126,7 +126,7 @@ export default function ChatInput({
                 fontSize: 14, background: 'none',
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-body)',
-                padding: '6px 8px',
+                padding: '8px 10px',
               }}
             />
 
@@ -135,7 +135,7 @@ export default function ChatInput({
               onClick={handleSend}
               disabled={!canSend}
               style={{
-                flexShrink: 0, width: 34, height: 34, borderRadius: 8,
+                flexShrink: 0, width: 38, height: 38, borderRadius: 9,
                 background: canSend ? 'var(--gold)' : 'var(--bg-hover)',
                 color: canSend ? '#0d0f14' : 'var(--text-muted)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -149,7 +149,7 @@ export default function ChatInput({
             </button>
           </div>
 
-          <p style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
             Drag & drop · Enter to send · Shift+Enter for new line · Max {MAX_FILES} files
           </p>
         </div>

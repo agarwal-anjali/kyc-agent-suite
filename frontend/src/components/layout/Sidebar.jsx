@@ -32,8 +32,8 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
         {!collapsed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Shield size={15} style={{ color: 'var(--gold)' }} />
-            <span className="font-display" style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-              KYC Suite
+            <span className="font-display" style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+              KYC Intelligence Suite
             </span>
           </div>
         )}
@@ -70,7 +70,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
             gap: 8, padding: collapsed ? '8px 0' : '8px 10px',
             background: 'var(--gold-dim)', border: '1px solid var(--gold-glow)',
             borderRadius: 'var(--radius-sm)', color: 'var(--gold)',
-            fontSize: 12, fontFamily: 'var(--font-mono)',
+            fontSize: 14, fontFamily: 'var(--font-mono)',
             transition: 'background 0.2s',
             whiteSpace: 'nowrap', overflow: 'hidden',
           }}
@@ -88,7 +88,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
           {Object.entries(grouped).map(([date, group]) => (
             <div key={date}>
               <p style={{
-                fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
+                fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)',
                 letterSpacing: '0.06em', padding: '10px 6px 4px', textTransform: 'uppercase',
               }}>
                 {date}
@@ -123,7 +123,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
                       flexShrink: 0,
                     }} />
                     <span style={{
-                      fontSize: 12, lineHeight: 1.45,
+                      fontSize: 14, lineHeight: 1.45,
                       color: s.id === activeSessionId ? 'var(--text-primary)' : 'var(--text-secondary)',
                       overflow: 'hidden',
                       display: '-webkit-box',
@@ -148,7 +148,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
           ))}
 
           {sessions.length === 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', fontFamily: 'var(--font-mono)' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', fontFamily: 'var(--font-mono)' }}>
               No chats yet
             </p>
           )}
@@ -165,7 +165,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
             width: 6, height: 6, borderRadius: '50%',
             background: USE_MOCK ? 'var(--warning)' : 'var(--success)',
           }} />
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
             {USE_MOCK ? 'Mock mode' : 'Live'}
           </span>
         </div>

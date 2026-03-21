@@ -30,7 +30,7 @@ export default function WelcomeScreen({ onSuggestion }) {
       <h1
         className="font-display animate-fade-up"
         style={{
-          fontSize: 28, fontWeight: 400, color: 'var(--text-primary)',
+          fontSize: 32, fontWeight: 400, color: 'var(--text-primary)',
           marginBottom: 8, textAlign: 'center',
           animationDelay: '0.05s',
         }}
@@ -82,7 +82,7 @@ export default function WelcomeScreen({ onSuggestion }) {
               }}
             >
               <Icon size={14} style={{ color: 'var(--gold)', marginTop: 1, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              <span style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                 {s.text}
               </span>
             </button>

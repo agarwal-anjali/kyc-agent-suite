@@ -48,8 +48,8 @@ body {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -123,7 +123,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 /* ── Input reset ─────────────────────────────────────────────────────────── */
 input, textarea {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-primary);
   background: none;
   border: none;
