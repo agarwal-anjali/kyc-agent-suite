@@ -1,14 +1,13 @@
 """
 Pydantic schemas for all inter-agent data contracts.
-Every agent reads and writes these models — never raw dicts.
 """
 
 from __future__ import annotations
-
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
 from datetime import datetime
+import uuid
 
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
@@ -38,6 +37,64 @@ class DDType(str, Enum):
     ENHANCED = "enhanced"
 
 
+class QueryIntent(str, Enum):
+    GENERIC_COMPLIANCE = "generic_compliance"
+    DOCUMENT_ANALYSIS  = "document_analysis"
+    KYC_CHECK          = "kyc_check"
+    HYBRID             = "hybrid"
+    INSUFFICIENT_INFO  = "insufficient_info"  # orchestrator signals missing context
+
+
+class AgentStep(str, Enum):
+    DOCUMENT_INTELLIGENCE = "document_intelligence"
+    REGULATORY_RETRIEVAL  = "regulatory_retrieval"
+    RISK_SCORING          = "risk_scoring"
+    REPORT_SUMMARISATION  = "report_summarisation"
+
+
+# ── Customer Details ───────────────────────────────────────────────────────────
+
+class CustomerDetails(BaseModel):
+    """
+    Optional structured customer context submitted via the UI form.
+    All fields are optional — the user fills in what they know.
+    The orchestrator uses whatever is provided to supplement document extraction.
+    """
+    customer_id:  str = Field(default_factory=lambda: f"CUST-{uuid.uuid4().hex[:6].upper()}")
+    full_name:    str | None = None
+    age:          int | None = None
+    nationality:  str | None = None
+    address:      str | None = None
+    occupation:   str | None = None
+    email:        str | None = None
+
+    def is_empty(self) -> bool:
+        """True if no fields beyond customer_id have been filled in."""
+        return all(
+            v is None for v in [
+                self.full_name, self.age, self.nationality,
+                self.address, self.occupation, self.email,
+            ]
+        )
+
+    def to_context_string(self) -> str:
+        """Serialise to a readable string for injection into prompts."""
+        fields = {
+            "Customer ID":  self.customer_id,
+            "Full Name":    self.full_name,
+            "Age":          self.age,
+            "Nationality":  self.nationality,
+            "Address":      self.address,
+            "Occupation":   self.occupation,
+            "Email":        self.email,
+        }
+        return "\n".join(
+            f"  {k}: {v}"
+            for k, v in fields.items()
+            if v is not None
+        )
+
+
 # ── Document Intelligence ──────────────────────────────────────────────────────
 
 class ExtractedDocumentFields(BaseModel):
@@ -51,11 +108,11 @@ class ExtractedDocumentFields(BaseModel):
 
 
 class DocumentIntelligenceOutput(BaseModel):
-    document_type:   DocumentType
+    document_type:    DocumentType
     extracted_fields: ExtractedDocumentFields
-    anomalies:       list[str] = Field(default_factory=list)
+    anomalies:        list[str] = Field(default_factory=list)
     confidence_score: float = Field(ge=0.0, le=1.0)
-    raw_caption:     str
+    raw_caption:      str
 
 
 # ── Regulatory Retrieval ───────────────────────────────────────────────────────
@@ -68,69 +125,145 @@ class RegulatoryPassage(BaseModel):
 
 
 class RegulatoryRetrievalOutput(BaseModel):
-    passages:              list[RegulatoryPassage]
-    due_diligence_type:    DDType
-    pep_flag:              bool
+    passages:               list[RegulatoryPassage]
+    due_diligence_type:     DDType
+    pep_flag:               bool
     high_risk_jurisdiction: bool
-    applicable_frameworks: list[str]
+    applicable_frameworks:  list[str]
 
 
 # ── Risk Scoring ───────────────────────────────────────────────────────────────
 
 class RiskScoreBreakdown(BaseModel):
-    identity_confidence:  float = Field(ge=0.0, le=1.0)
-    document_validity:    float = Field(ge=0.0, le=1.0)
-    jurisdictional_risk:  str
-    pep_screening:        str
-    overall_risk_tier:    RiskTier
-    recommendation:       str
+    identity_confidence: float = Field(ge=0.0, le=1.0)
+    document_validity:   float = Field(ge=0.0, le=1.0)
+    jurisdictional_risk: str
+    pep_screening:       str
+    overall_risk_tier:   RiskTier
+    recommendation:      str
 
 
-# ── Multi-document submission ──────────────────────────────────────────────────
+# ── Execution Plan ─────────────────────────────────────────────────────────────
+
+class ExecutionPlan(BaseModel):
+    intent:           QueryIntent
+    steps:            list[AgentStep]
+    reasoning:        str
+    missing_info:     list[str] = Field(default_factory=list)
+    # What the orchestrator found in session context that it's reusing
+    reusing_from_session: list[str] = Field(default_factory=list)
+
+
+# ── Chat / Session persistence ─────────────────────────────────────────────────
+
+class ChatRole(str, Enum):
+    USER      = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatMessage(BaseModel):
+    """A single message in a chat thread."""
+    message_id:   str = Field(default_factory=lambda: uuid.uuid4().hex)
+    role:         ChatRole
+    content:      str
+    timestamp:    datetime = Field(default_factory=datetime.utcnow)
+
+    # Metadata attached to assistant messages
+    intent:        QueryIntent | None = None
+    execution_plan: ExecutionPlan | None = None
+    risk_score:    RiskScoreBreakdown | None = None
+    verdict:       KYCVerdict | None = None
+
+    # Documents attached to this user message (base64 stored in session, not here)
+    document_count: int = 0
+    customer_details: CustomerDetails | None = None
+
+
+class SessionContext(BaseModel):
+    """
+    Accumulated context across all turns in a session.
+    The orchestrator reads this to avoid asking for info already provided.
+
+    Persistence strategy:
+    - Stored in-memory on the server keyed by session_id
+    - In future: serialise to Redis or a database
+    - Frontend sends session_id on every request; server looks up context
+    """
+    session_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Accumulated customer context across turns
+    customer_details: CustomerDetails | None = None
+
+    # Most recent document intelligence output — reused in follow-up questions
+    # without requiring the user to re-upload documents
+    last_document_intelligence: DocumentIntelligenceOutput | None = None
+    last_regulatory_retrieval:  RegulatoryRetrievalOutput  | None = None
+    last_risk_scoring:          RiskScoreBreakdown          | None = None
+    last_verdict:               KYCVerdict | None = None
+
+    # Full message history for this session
+    messages: list[ChatMessage] = Field(default_factory=list)
+
+    def get_recent_messages_summary(self, n: int = 5) -> str:
+        """
+        Produce a short text summary of the last N messages.
+        Injected into planning prompts so the orchestrator has conversation context.
+        """
+        recent = self.messages[-n:] if len(self.messages) >= n else self.messages
+        if not recent:
+            return "No prior messages."
+        lines = []
+        for m in recent:
+            prefix = "User" if m.role == ChatRole.USER else "Assistant"
+            intent_tag = f" [{m.intent.value}]" if m.intent else ""
+            lines.append(f"{prefix}{intent_tag}: {m.content[:150]}...")
+        return "\n".join(lines)
+
+    def has_customer_context(self) -> bool:
+        return (
+            self.customer_details is not None
+            or self.last_document_intelligence is not None
+        )
+
+
+# ── Document submission ────────────────────────────────────────────────────────
 
 class DocumentSubmission(BaseModel):
-    """
-    A single document within a multi-document KYC submission.
-    Wraps the base64 content with an optional human-readable label
-    so the caller can hint at document type (e.g. "passport", "utility_bill").
-    The label is advisory — the Document Intelligence Agent will independently
-    detect the actual document type from the content.
-    """
-    content_b64: str = Field(
-        ...,
-        description="Base64-encoded document content (PDF, JPEG, or PNG)"
-    )
-    label: str | None = Field(
-        default=None,
-        description="Optional hint about document type e.g. 'passport', 'utility_bill'"
-    )
+    content_b64: str
+    label:       str | None = None
 
 
-# ── Orchestrator State (LangGraph) ─────────────────────────────────────────────
+# ── Orchestrator turn state ────────────────────────────────────────────────────
 
 class KYCState(BaseModel):
     """
-    Shared state passed between all nodes in the LangGraph graph.
-    Each agent reads what it needs and writes its output back here.
+    State for a single pipeline turn.
+    Session context is loaded into this state at the start of each turn
+    and written back to the session store after completion.
     """
-    customer_id:    str
-    query:          str
+    # Turn identity
+    session_id:  str
+    turn_id:     str = Field(default_factory=lambda: uuid.uuid4().hex)
+    query:       str
 
-    # Supports multiple documents — replaces the old flat documents_b64 list
-    # Each DocumentSubmission carries its content and an optional label
-    documents:      list[DocumentSubmission] = Field(default_factory=list)
+    # Customer details from form (this turn) — merged with session context
+    customer_details: CustomerDetails | None = None
 
-    # Kept for backwards compatibility with test fixtures and curl examples
-    # If populated, these are wrapped into DocumentSubmission objects at API layer
-    documents_b64:  list[str] = Field(default_factory=list)
+    # Documents submitted this turn
+    documents:     list[DocumentSubmission] = Field(default_factory=list)
+    documents_b64: list[str] = Field(default_factory=list)
 
-    # Agent outputs — populated as the graph executes
+    # Session context carried in from prior turns
+    session_context: SessionContext | None = None
+
+    # Orchestrator planning output
+    execution_plan: ExecutionPlan | None = None
+
+    # Agent outputs for this turn
     document_intelligence: DocumentIntelligenceOutput | None = None
     regulatory_retrieval:  RegulatoryRetrievalOutput  | None = None
     risk_scoring:          RiskScoreBreakdown          | None = None
-
-    # Per-document raw outputs before merging — useful for the report
-    # and for surfacing individual document findings in the UI
     individual_document_outputs: list[DocumentIntelligenceOutput] = Field(
         default_factory=list
     )
@@ -142,69 +275,77 @@ class KYCState(BaseModel):
     completed_at: datetime | None = None
 
     def get_documents_b64(self) -> list[str]:
-        """
-        Return base64 strings regardless of which input format was used.
-        Centralises the documents_b64 vs documents duality in one place.
-        """
         if self.documents:
             return [d.content_b64 for d in self.documents]
         return self.documents_b64
 
+    def has_documents(self) -> bool:
+        return bool(self.documents or self.documents_b64)
+
+    def get_effective_customer_details(self) -> CustomerDetails | None:
+        """
+        Return customer details for this turn, falling back to session context.
+        This is how follow-up questions reuse previously submitted details.
+        """
+        if self.customer_details and not self.customer_details.is_empty():
+            return self.customer_details
+        if self.session_context and self.session_context.customer_details:
+            return self.session_context.customer_details
+        return None
+
+    def get_effective_document_intelligence(self) -> DocumentIntelligenceOutput | None:
+        """
+        Return document intelligence for this turn or from session context.
+        Allows follow-up questions to reference previously uploaded documents.
+        """
+        return (
+            self.document_intelligence
+            or (self.session_context.last_document_intelligence if self.session_context else None)
+        )
+
 
 # ── API Schemas ────────────────────────────────────────────────────────────────
 
-class KYCRequest(BaseModel):
-    customer_id: str = Field(..., description="Unique customer identifier")
-    query: str = Field(
-        default="Perform a full KYC check on this customer.",
-        description="Natural language instruction for the KYC analysis"
+class ChatRequest(BaseModel):
+    """
+    A single chat message sent by the user.
+    This is the only API request shape — one unified interface.
+    """
+    session_id:       str | None = Field(
+        default=None,
+        description="Omit to start a new session. Provide to continue an existing one."
     )
-    documents: list[DocumentSubmission] = Field(
-        default_factory=list,
-        description="List of documents with optional labels"
-    )
-    # Flat base64 list kept for backwards compatibility with existing curl examples
-    documents_b64: list[str] = Field(
-        default_factory=list,
-        description="Flat list of base64-encoded documents (legacy format)"
-    )
+    query:            str
+    documents:        list[DocumentSubmission] = Field(default_factory=list)
+    documents_b64:    list[str] = Field(default_factory=list)
+    customer_details: CustomerDetails | None = None
 
-    def to_kyc_state(self) -> "KYCState":
-        """
-        Convert the API request into a KYCState.
+    def to_kyc_state(self, session_context: SessionContext) -> KYCState:
+        docs = self.documents
+        if not docs and self.documents_b64:
+            docs = [DocumentSubmission(content_b64=b64) for b64 in self.documents_b64]
 
-        Handles both input formats:
-        - New format: documents=[DocumentSubmission(...), ...]
-        - Legacy format: documents_b64=["base64...", ...]
-
-        If both are provided, the structured documents list takes precedence.
-        """
-        if self.documents:
-            # New structured format — use as-is
-            return KYCState(
-                customer_id=self.customer_id,
-                query=self.query,
-                documents=self.documents,
-            )
-        elif self.documents_b64:
-            # Legacy flat format — wrap each into a DocumentSubmission
-            return KYCState(
-                customer_id=self.customer_id,
-                query=self.query,
-                documents=[
-                    DocumentSubmission(content_b64=b64)
-                    for b64 in self.documents_b64
-                ],
-            )
-        else:
-            raise ValueError("Either 'documents' or 'documents_b64' must be provided.")
+        return KYCState(
+            session_id=session_context.session_id,
+            query=self.query,
+            customer_details=self.customer_details,
+            documents=docs,
+            session_context=session_context,
+        )
 
 
-class KYCResponse(BaseModel):
-    customer_id:  str
-    verdict:      KYCVerdict
-    risk_tier:    RiskTier
-    report:       str
-    document_count: int
-    agents:       dict[str, Any]
-    completed_at: datetime
+class ChatResponse(BaseModel):
+    session_id:     str
+    message_id:     str
+    intent:         QueryIntent | None
+    verdict:        KYCVerdict | None
+    risk_tier:      RiskTier | None
+    report:         str
+    execution_plan: ExecutionPlan | None
+    agents:         dict[str, Any]
+    completed_at:   datetime
+
+
+class NewSessionResponse(BaseModel):
+    session_id: str
+    created_at: datetime

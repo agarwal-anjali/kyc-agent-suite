@@ -1,135 +1,166 @@
 """
 Orchestrator Agent
 
-Responsibilities:
-- Entry point for the entire KYC pipeline
-- Manages execution order of sub-agents
-- Handles errors and partial failures gracefully
-- Delegates to LangGraph graph for stateful routing
+Now a thin wrapper around the LangGraph graph.
+Responsibility split:
+  - Planning: graph's node_plan node
+  - Execution: graph nodes with conditional routing
+  - Persistence: LangGraph MemorySaver checkpointer
+  - Streaming: graph.astream_events(version="v2")
 """
 
 import structlog
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage
-
-from core.config import settings
-from core.models import KYCState
-from core.prompts import ORCHESTRATOR_PLAN_PROMPT
-from agents.document_intelligence import DocumentIntelligenceAgent
-from agents.regulatory_retrieval import RegulatoryRetrievalAgent
-from agents.risk_scoring import RiskScoringAgent
-from agents.report_summarisation import ReportSummarisationAgent
+from core.models import KYCState, QueryIntent
+from core.graph import kyc_graph
 
 log = structlog.get_logger()
+
+# ── Node name → human-readable status message ──────────────────────────────────
+NODE_STATUS = {
+    "plan":                   "Thinking...",
+    "document_intelligence":  "Analysing documents...",
+    "regulatory_retrieval":   "Retrieving applicable regulations...",
+    "risk_scoring":           "Calculating risk score...",
+    "report_summarisation":   "Generating response...",
+}
+
+# ── Node name → pipeline step key (for frontend step tracker) ─────────────────
+NODE_STEP_KEY = {
+    "document_intelligence": "doc",
+    "regulatory_retrieval":  "reg",
+    "risk_scoring":          "risk",
+    "report_summarisation":  "report",
+}
 
 
 class OrchestratorAgent:
     """
-    Coordinates the end-to-end KYC pipeline.
-    
-    Execution order:
-    1. Document Intelligence (parallel across submitted documents)
-    2. Regulatory Retrieval (uses doc output and original user query as context)
-    3. Risk Scoring (synthesises steps 1 and 2 to access risk level)
-    4. Report Summarisation (produces final output)
+    Thin orchestrator that delegates to the LangGraph graph.
+
+    Uses:
+    - graph.ainvoke()        for non-streaming requests
+    - graph.astream_events() for SSE streaming requests
+
+    Session persistence is handled by LangGraph's MemorySaver checkpointer.
+    Each session maps to a LangGraph thread_id.
     """
 
-    def __init__(self) -> None:
-        self._doc_agent = DocumentIntelligenceAgent()
-        self._reg_agent = RegulatoryRetrievalAgent()
-        self._risk_agent = RiskScoringAgent()
-        self._report_agent = ReportSummarisationAgent()
-        self._llm = ChatGoogleGenerativeAI(
-            model=settings.llm_model,
-            google_api_key=settings.google_api_key,
-            temperature=1.0,
-            max_tokens=200,
-        )
+    @staticmethod
+    def _make_config(session_id: str) -> dict:
+        """
+        Build the LangGraph run config for a session.
+        thread_id is how LangGraph identifies which checkpoint to load/save.
+        """
+        return {"configurable": {"thread_id": session_id}}
 
     async def run(self, state: KYCState) -> KYCState:
         """
-        Execute the full KYC pipeline for a given state.
-
-        Args:
-            state: Initial KYCState with customer_id, query, and documents
-
-        Returns:
-            Completed KYCState with all agent outputs and final report
+        Execute the full pipeline and return the completed state.
+        LangGraph loads the previous checkpoint for this session_id,
+        runs the graph, and saves the new checkpoint on completion.
         """
-        log.info("orchestrator.run_started", customer_id=state.customer_id)
+        log.info("orchestrator.run_started", session_id=state.session_id)
 
-        try:
-            # Step 1: Document Intelligence
-            # Only accepts one document as primary identity document
-            log.info("orchestrator.invoking_document_intelligence")
-            doc_outputs = await self._analyse_documents_parallel(state.get_documents_b64())
-            state.document_intelligence = doc_outputs
-
-            # Step 2: Regulatory Retrieval
-            log.info("orchestrator.invoking_regulatory_retrieval")
-            reg_output = await self._reg_agent.retrieve(doc_outputs, state.query)
-            state.regulatory_retrieval = reg_output
-
-            # Step 3: Risk Scoring
-            log.info("orchestrator.invoking_risk_scoring")
-            risk_output = await self._risk_agent.score(doc_outputs, reg_output)
-            state.risk_scoring = risk_output
-
-            # Step 4: Report Summarisation
-            log.info("orchestrator.invoking_report_summarisation")
-            state = await self._report_agent.summarise(state)
-
-        except Exception as e:
-            log.error("orchestrator.pipeline_error", error=str(e), customer_id=state.customer_id)
-            state.error = str(e)
+        config = self._make_config(state.session_id)
+        result = await kyc_graph.ainvoke(state, config=config)
 
         log.info(
             "orchestrator.run_completed",
-            customer_id=state.customer_id,
-            verdict=state.verdict,
-            error=state.error,
+            session_id=state.session_id,
+            intent=result.execution_plan.intent if result.execution_plan else None,
+            verdict=result.verdict,
         )
-        return state
+        return result
 
     async def run_streaming(self, state: KYCState):
         """
-        Execute the pipeline with streaming for the final report step.
-        
-        Yields status events and then streams the report tokens.
-        Each yielded value is a dict suitable for SSE serialisation.
+        Execute the pipeline with SSE streaming using LangGraph's
+        native astream_events() API.
+
+        Event types yielded:
+          status       — Node start/end progress messages
+          plan         — ExecutionPlan JSON (after planning node completes)
+          step_update  — Which pipeline step is now active (for UI tracker)
+          risk_score   — RiskScoreBreakdown JSON (after risk_scoring node)
+          report_token — Individual LLM tokens from report summarisation
+          error        — Pipeline error message
         """
-        log.info("orchestrator.stream_started", customer_id=state.customer_id)
+        log.info("orchestrator.stream_started", session_id=state.session_id)
+
+        config = self._make_config(state.session_id)
 
         try:
-            yield {"event": "status", "data": "Running document analysis..."}
-            doc_count = len(state.get_documents_b64())
-            yield {
-                "event": "status",
-                "data": f"Analysing {doc_count} document{'s' if doc_count > 1 else ''} in parallel...",
-            }
-            doc_outputs = await self._analyse_documents_parallel(state.get_documents_b64())
-            state.document_intelligence = doc_output
-            yield {"event": "status", "data": "Document analysis complete."}
+            async for event in kyc_graph.astream_events(
+                state,
+                config=config,
+                version="v2",        # use v2 for richer metadata
+            ):
+                kind     = event["event"]
+                name     = event.get("name", "")
+                metadata = event.get("metadata", {})
 
-            yield {"event": "status", "data": "Retrieving applicable regulations..."}
-            reg_output = await self._reg_agent.retrieve(doc_output, state.query)
-            state.regulatory_retrieval = reg_output
-            yield {"event": "status", "data": "Regulatory retrieval complete."}
+                # ── Node started ───────────────────────────────────────────
+                if kind == "on_chain_start" and name in NODE_STATUS:
+                    yield {
+                        "event": "status",
+                        "data":  NODE_STATUS[name],
+                    }
+                    # Emit step key for UI pipeline tracker
+                    if name in NODE_STEP_KEY:
+                        yield {
+                            "event": "step_update",
+                            "data":  f"{NODE_STEP_KEY[name]}:running",
+                        }
 
-            yield {"event": "status", "data": "Calculating risk score..."}
-            risk_output = await self._risk_agent.score(doc_output, reg_output)
-            state.risk_scoring = risk_output
-            yield {
-                "event": "risk_score",
-                "data": risk_output.model_dump_json(),
-            }
+                # ── Node completed ─────────────────────────────────────────
+                elif kind == "on_chain_end" and name in NODE_STATUS:
 
-            yield {"event": "status", "data": "Generating compliance report..."}
-            async for token in self._report_agent.stream(state):
-                yield {"event": "report_token", "data": token}
+                    # After planning: emit the execution plan
+                    if name == "plan":
+                        output = event["data"].get("output")
+                        if output and hasattr(output, "execution_plan") and output.execution_plan:
+                            yield {
+                                "event": "plan",
+                                "data":  output.execution_plan.model_dump_json(),
+                            }
 
-            yield {"event": "status", "data": "Complete."}
+                    # After risk scoring: emit risk score
+                    elif name == "risk_scoring":
+                        output = event["data"].get("output")
+                        if output and hasattr(output, "risk_scoring") and output.risk_scoring:
+                            yield {
+                                "event": "risk_score",
+                                "data":  output.risk_scoring.model_dump_json(),
+                            }
+
+                    # Mark step as done in UI tracker
+                    if name in NODE_STEP_KEY:
+                        yield {
+                            "event": "step_update",
+                            "data":  f"{NODE_STEP_KEY[name]}:done",
+                        }
+
+                # ── LLM token streaming ────────────────────────────────────
+                # Only surface tokens from the report summarisation node
+                elif kind == "on_chat_model_stream":
+                    # metadata["langgraph_node"] tells us which node is streaming
+                    node = metadata.get("langgraph_node", "")
+                    if node == "report_summarisation":
+                        chunk = event["data"].get("chunk")
+                        if chunk and hasattr(chunk, "content") and chunk.content:
+                            token = (
+                                chunk.content if isinstance(chunk.content, str)
+                                else "".join(
+                                    b.get("text", "") if isinstance(b, dict) else b
+                                    for b in chunk.content
+                                    if b
+                                )
+                            )
+                            if token:
+                                yield {"event": "report_token", "data": token}
 
         except Exception as e:
             log.error("orchestrator.stream_error", error=str(e))
             yield {"event": "error", "data": str(e)}
+
+        yield {"event": "status", "data": "Complete."}
