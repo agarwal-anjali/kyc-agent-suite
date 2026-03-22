@@ -1,6 +1,6 @@
-// ── Dev toggle ────────────────────────────────────────────────────────────────
+// ── Mock toggle ────────────────────────────────────────────────────────────────
 // Set to true to use mock API endpoints and data for frontend development without invoking the agent.
-export const USE_MOCK = false
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK ? true : import.meta.env.DEV
 
 // ── API endpoints ─────────────────────────────────────────────────────────────
 export const ENDPOINTS = {

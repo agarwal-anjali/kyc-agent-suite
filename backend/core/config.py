@@ -9,34 +9,36 @@ log = structlog.get_logger()
 
 class Settings(BaseSettings):
     # Gemini
-    google_api_key: str = Field(..., env="GOOGLE_API_KEY")
+    google_api_key:  str = Field(..., env="GOOGLE_API_KEY")
+
+    # Models
     llm_model: str = Field(default="gemini-3-flash-preview", env="LLM_MODEL")
     vision_model: str = Field(default="gemini-3-flash-preview", env="VISION_MODEL")
     embedding_model: str = Field(default="gemini-embedding-001", env="EMBEDDING_MODEL")
 
     # Vector Store
     qdrant_url: str = Field(default="http://localhost:6333", env="QDRANT_URL")
-    qdrant_collection_name: str = Field(
-        default="kyc_regulatory_corpus", env="QDRANT_COLLECTION_NAME"
-    )
-    qdrant_api_key: str | None = Field(default=None, env="QDRANT_API_KEY")
+    qdrant_collection_name: str = Field(default="kyc_regulatory_corpus", env="QDRANT_COLLECTION_NAME")
+
 
     # App
-    app_env: str = Field(default="development", env="APP_ENV")
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    app_env:   str = Field(default="development", env="APP_ENV")
+    log_level: str = Field(default="INFO",        env="LOG_LEVEL")
+
+    # CORS
+    allowed_origins: list[str] = Field(
+        default=["http://localhost:5173", "http://localhost:4173"],
+        env="ALLOWED_ORIGINS"
+    )
 
     # Risk thresholds
-    identity_confidence_threshold: float = Field(
-        default=0.75, env="IDENTITY_CONFIDENCE_THRESHOLD"
-    )
-    document_validity_threshold: float = Field(
-        default=0.80, env="DOCUMENT_VALIDITY_THRESHOLD"
-    )
+    identity_confidence_threshold: float = Field(default=0.75, env="IDENTITY_CONFIDENCE_THRESHOLD")
+    document_validity_threshold: float = Field(default=0.80, env="DOCUMENT_VALIDITY_THRESHOLD")
 
     # FATF country list
     fatf_country_list_path: Path = Field(
         default=Path("data/fatf_high_risk_countries.json"),
-        env="FATF_COUNTRY_LIST_PATH",
+        env="FATF_COUNTRY_LIST_PATH"
     )
 
     class Config:

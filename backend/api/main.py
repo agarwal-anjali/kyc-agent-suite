@@ -25,6 +25,7 @@ from core.models import (
 )
 from core.graph import memory_checkpointer
 from agents.orchestrator import OrchestratorAgent
+from core.config import settings
 
 log = structlog.get_logger()
 
@@ -35,7 +36,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
