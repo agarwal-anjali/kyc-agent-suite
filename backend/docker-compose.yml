@@ -4,7 +4,7 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ~/qdrant-data:/qdrant/storage    # bind mount — reuses existing data
 
   api:
     build: .
@@ -16,6 +16,3 @@ services:
       - qdrant
     volumes:
       - ./data:/app/data
-
-volumes:
-  qdrant_data:
