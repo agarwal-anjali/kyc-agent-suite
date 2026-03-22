@@ -46,8 +46,7 @@ export default function WelcomeScreen({ onSuggestion }) {
           animationDelay: '0.1s',
         }}
       >
-        Compliance Q&A, document analysis, and full KYC checks —
-        powered by a multi-agent system.
+        Ask compliance related questions, review documents, or run full KYC checks and get detailed structured response with references.
       </p>
 
       {/* Suggestions */}

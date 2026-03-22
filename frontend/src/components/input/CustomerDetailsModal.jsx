@@ -82,7 +82,7 @@ export default function CustomerDetailsModal({ value, onChange, onClose }) {
                   type={f.type}
                   name={f.key}
                   defaultValue={value?.[f.key] || ''}
-                  placeholder={f.key === 'customer_id' ? 'e.g. CUST-001 (auto-assigned if blank)' : ''}
+                  placeholder={f.key === 'customer_id' ? 'e.g. CUST-001' : ''}
                   style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
                   onBlur={e =>  { e.target.style.borderColor = 'var(--border)' }}

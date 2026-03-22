@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Shield, BarChart3 } from 'lucide-react'
 import IntentBadge    from '../ui/IntentBadge'
 import PipelineTracker from '../ui/PipelineTracker'
@@ -7,7 +8,6 @@ import RiskBadge      from '../ui/RiskBadge'
 import ScoreBar       from '../ui/ScoreBar'
 import Collapsible    from '../ui/Collapsible'
 import { formatTime } from '../../lib/utils'
-import { renderMarkdownToHtml } from '../../lib/markdown'
 
 function ThinkingDots() {
   return (
@@ -28,7 +28,7 @@ export default function AssistantMessage({ message }) {
     content, isStreaming, intent, plan, planSteps,
     stepStatuses, riskScore, verdict, timestamp,
   } = message
-  const renderedContent = useMemo(() => renderMarkdownToHtml(content), [content])
+  const markdownContent = useMemo(() => content || '', [content])
 
   const showThinking = isStreaming && !content && !plan
 
@@ -80,8 +80,9 @@ export default function AssistantMessage({ message }) {
               lineHeight: 1.8,
             }}
               className={`markdown-body ${isStreaming && content ? 'streaming-cursor' : ''}`}
-              dangerouslySetInnerHTML={{ __html: renderedContent }}
-            />
+            >
+              <ReactMarkdown>{markdownContent}</ReactMarkdown>
+            </div>
           )}
 
           {/* Risk score breakdown */}

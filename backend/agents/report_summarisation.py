@@ -47,7 +47,7 @@ class ReportSummarisationAgent:
             model=settings.llm_model,
             google_api_key=settings.google_api_key,
             temperature=1.0,
-            max_tokens=1500,
+            max_tokens=2200,
             streaming=True,
         )
 

@@ -84,7 +84,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
 
       {/* Session list */}
       {!collapsed && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
+        <div style={{ flex: 1, overflow: 'hidden', padding: '0 8px' }}>
           {Object.entries(grouped).map(([date, group]) => (
             <div key={date}>
               <p style={{
@@ -126,10 +126,9 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
                       fontSize: 14, lineHeight: 1.45,
                       color: s.id === activeSessionId ? 'var(--text-primary)' : 'var(--text-secondary)',
                       overflow: 'hidden',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      wordBreak: 'break-word',
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      minWidth: 0,
                     }}>
                       {s.preview}
                     </span>
@@ -140,7 +139,7 @@ export default function Sidebar({ sessions, activeSessionId, onNewChat, onSelect
                     onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--danger)' }}
                     onMouseLeave={e => { e.currentTarget.style.opacity = '0'; e.currentTarget.style.color = 'var(--text-muted)' }}
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               ))}

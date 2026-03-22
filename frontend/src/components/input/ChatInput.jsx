@@ -72,7 +72,7 @@ export default function ChatInput({
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             style={{
-              display: 'flex', alignItems: 'flex-end', gap: 8,
+              display: 'flex', alignItems: 'center', gap: 8,
               background: 'var(--bg-surface)',
               border: `1px solid ${isDragging ? 'var(--gold)' : 'var(--border-bright)'}`,
               borderRadius: 'var(--radius-md)', padding: '10px 12px',
@@ -127,6 +127,7 @@ export default function ChatInput({
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-body)',
                 padding: '8px 10px',
+                margin: 0,
               }}
             />
 

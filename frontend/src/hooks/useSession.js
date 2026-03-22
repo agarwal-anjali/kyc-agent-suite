@@ -31,7 +31,7 @@ export function useSession() {
 
   const updatePreview = useCallback((sessionId, preview) => {
     setSessions(prev =>
-      prev.map(s => s.id === sessionId ? { ...s, preview: truncateWords(preview, 8) } : s)
+      prev.map(s => s.id === sessionId ? { ...s, preview: truncateWords(preview, 4) } : s)
     )
   }, [])
 

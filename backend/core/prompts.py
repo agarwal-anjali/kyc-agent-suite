@@ -56,8 +56,11 @@ Step 1 — Determine INTENT:
     The user's query requires information that was not provided and does
     not exist in session context. The system cannot proceed.
     Set missing_info to explain exactly what is needed.
-    Examples: User says "perform KYC" but no documents or customer details
+    Examples: 
+    - User says "perform KYC" but no documents or customer details
     exist in this turn or in session context.
+    - User asks a compliance question that requires specific customer context
+    - User asks to analyse a document but no document was provided in this turn or prior turns.
 
 Step 2 — Check what information is available:
   - Does the query require documents? Are any available (this turn or session)?
@@ -148,7 +151,9 @@ You are a compliance assistant at a financial institution in Singapore.
 Respond appropriately for the request type below.
 
 Request Type: {intent}
+
 Query: {query}
+
 Report Generation Date: {report_generation_date}
 
 {customer_context}
@@ -163,11 +168,15 @@ Response guidelines:
 - document_analysis: Describe what was found. Be specific about extracted fields
   and anomalies. Present findings clearly.
 - kyc_check: Write a full KYC compliance report:
-  1. Customer Identity Summary
-  2. Document Verification Findings
-  3. Applicable Regulatory Requirements
-  4. Risk Assessment Breakdown
-  5. Overall Verdict and Recommended Next Steps
+  Use proper Markdown with:
+  - `# KYC Compliance Report`
+  - A short metadata block on separate lines for report date and subject
+  - `## 1. Customer Identity Summary`
+  - `## 2. Document Verification Findings`
+  - `## 3. Applicable Regulatory Requirements`
+  - `## 4. Risk Assessment Breakdown`
+  - `## 5. Overall Verdict and Recommended Next Steps`
+  Keep section headings on their own lines.
 - hybrid: Combine document findings with regulatory context clearly.
 - insufficient_info: Politely explain what information is needed to proceed.
   Be specific about what documents or details are required.
@@ -175,6 +184,8 @@ Response guidelines:
 Use clear, professional language. Be specific — reference field values, regulation
 names, and scores where available.
 If you include a date in the response, use the Report Generation Date above.
+Keep the response concise enough to fit comfortably within the model output limit.
+Prefer roughly 700-900 words for a full KYC report and avoid unnecessary repetition.
 """
 
 DOCUMENT_CONTEXT_BLOCK = """

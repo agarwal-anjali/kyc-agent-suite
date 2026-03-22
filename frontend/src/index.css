@@ -132,6 +132,19 @@ input, textarea {
 
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
 
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-surface) inset;
+  box-shadow: 0 0 0 1000px var(--bg-surface) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 /* ── Markdown report rendering ──────────────────────────────────────────── */
 .markdown-body > :first-child { margin-top: 0; }
 .markdown-body > :last-child { margin-bottom: 0; }
@@ -142,9 +155,20 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 .markdown-body h4 {
   color: var(--text-primary);
   line-height: 1.25;
-  margin: 1rem 0 0.55rem;
-  font-family: var(--font-display);
-  font-weight: 500;
+  margin: 1.05rem 0 0.6rem;
+  font-family: var(--font-body);
+  font-weight: 600;
+}
+
+.markdown-body h1 { font-size: 1.45rem; }
+.markdown-body h2 { font-size: 1.18rem; }
+.markdown-body h3 { font-size: 1.05rem; }
+.markdown-body h4 { font-size: 0.98rem; }
+
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
 }
 
 .markdown-body p,
@@ -153,6 +177,10 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 .markdown-body blockquote,
 .markdown-body pre {
   margin: 0.75rem 0;
+}
+
+.markdown-body p {
+  color: var(--text-secondary);
 }
 
 .markdown-body ul,
