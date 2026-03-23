@@ -133,7 +133,20 @@ Ingestion is additive — if you add new documents later, re-running the command
 
 ---
 
-### Step 5 — Frontend
+### Step 5 — Run Backend Tests
+
+The backend includes a lightweight unit test suite under `backend/tests`.
+
+```bash
+# From the backend directory
+python -m pytest tests -q
+```
+
+Run this after installing backend dependencies to quickly validate core logic such as routing, model helpers, config loading, ingestion helpers, and scoring rules.
+
+---
+
+### Step 6 — Frontend
 
 ```bash
 cd ../frontend
@@ -165,6 +178,7 @@ The project uses GitHub Actions to automate deployment of both the backend and f
 ### Backend Deployment
 - Triggered on pushes to `main` when backend files change
 - Connects to the EC2 instance over SSH
+- Runs the backend unit tests in GitHub Actions before deployment
 - Pulls the latest code from `main`
 - Recreates the backend `.env` file from GitHub Secrets
 - Rebuilds and restarts only the API container using Docker Compose
