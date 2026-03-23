@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Vector Store
     qdrant_url: str = Field(default="http://localhost:6333", env="QDRANT_URL")
     qdrant_collection_name: str = Field(default="kyc_regulatory_corpus", env="QDRANT_COLLECTION_NAME")
+    qdrant_api_key: str | None = Field(default=None, env="QDRANT_API_KEY")
 
 
     # App
