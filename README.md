@@ -12,7 +12,9 @@ This document contains details about the problem statement, features, case study
 
 🌐 **[Link to Deployed App](http://13.212.149.181:3000)**
 
-![Product Preview](landing_page.png)
+<p>
+  <img src="landing_page.png" alt="Product preview" width="1000" border="1" />
+</p>
 
 ### Sample Questions to Try
 
