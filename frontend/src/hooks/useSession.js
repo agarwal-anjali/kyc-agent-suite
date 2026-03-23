@@ -31,7 +31,11 @@ export function useSession() {
 
   const updatePreview = useCallback((sessionId, preview) => {
     setSessions(prev =>
-      prev.map(s => s.id === sessionId ? { ...s, preview: truncateWords(preview, 4) } : s)
+      prev.map(s => {
+        if (s.id !== sessionId) return s
+        if (s.preview && s.preview !== 'New conversation') return s
+        return { ...s, preview: truncateWords(preview, 4) }
+      })
     )
   }, [])
 

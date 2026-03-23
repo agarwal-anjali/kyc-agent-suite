@@ -97,6 +97,35 @@ class ReportSummarisationAgent:
             history_context=HISTORY_CONTEXT_BLOCK.format(history_summary=history_summary),
         )
 
+    def _finalise_report(self, report_text: str) -> str:
+        """
+        Trim obviously incomplete trailing fragments so the final UI state does not
+        end mid-sentence when generation hits a token boundary.
+        """
+        text = (report_text or "").strip()
+        if not text:
+            return ""
+
+        if text.endswith((".", "!", "?", "`")):
+            return text
+
+        lines = text.splitlines()
+        while lines:
+            candidate = lines[-1].strip()
+            if not candidate:
+                lines.pop()
+                continue
+
+            # Keep complete headings and list items; trim incomplete prose tails.
+            if candidate.startswith(("#", "##", "###", "-", "*")):
+                break
+            if candidate.endswith((".", "!", "?", ":", "`")):
+                break
+            lines.pop()
+
+        final_text = "\n".join(lines).strip()
+        return final_text or text
+
     async def summarise(self, state: KYCState) -> KYCState:
         """
         Generate the KYC report and attach verdict and timestamp to state.
@@ -120,7 +149,7 @@ class ReportSummarisationAgent:
         response = await self._llm.ainvoke([HumanMessage(content=prompt)])
 
         # Extract plain text — Gemini can return list of content blocks
-        report_text = self._extract_text(response.content)
+        report_text = self._finalise_report(self._extract_text(response.content))
 
         state.report = report_text
         state.verdict = verdict

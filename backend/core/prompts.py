@@ -183,9 +183,13 @@ Response guidelines:
 
 Use clear, professional language. Be specific — reference field values, regulation
 names, and scores where available.
+
 If you include a date in the response, use the Report Generation Date above.
 Keep the response concise enough to fit comfortably within the model output limit.
 Prefer roughly 700-900 words for a full KYC report and avoid unnecessary repetition.
+
+IMPORTANT: If you need to shorten the answer, shorten earlier sections instead of ending mid-sentence,
+mid-list, or mid-section. The response must end cleanly and feel complete.
 """
 
 DOCUMENT_CONTEXT_BLOCK = """

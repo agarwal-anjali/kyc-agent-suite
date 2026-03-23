@@ -133,6 +133,14 @@ class OrchestratorAgent:
                                 "data":  output.risk_scoring.model_dump_json(),
                             }
 
+                    elif name == "report_summarisation":
+                        output = event["data"].get("output")
+                        if output and hasattr(output, "report") and output.report:
+                            yield {
+                                "event": "report_complete",
+                                "data":  output.report,
+                            }
+
                     # Mark step as done in UI tracker
                     if name in NODE_STEP_KEY:
                         yield {

@@ -59,8 +59,14 @@ export function useChat({ sessionId, onFirstMessage }) {
     try {
       const docsB64 = await Promise.all(files.map(toBase64))
       const reader  = await sendMessage({ sessionId, query, docsB64, customerDetails })
+      let streamError = null
 
       await parseSSEStream(reader, (type, data) => {
+        if (type === 'error') {
+          streamError = new Error(data.trim())
+          return
+        }
+
         setMessages(prev => prev.map(m => {
           if (m.id !== assistantMsgId) return m
 
@@ -105,17 +111,30 @@ export function useChat({ sessionId, onFirstMessage }) {
             return { ...m, content: m.content + data }
           }
 
-          if (type === 'error') {
-            throw new Error(data.trim())
+          if (type === 'report_complete') {
+            return { ...m, content: data, isStreaming: false }
           }
 
           return m
         }))
       })
 
+      if (streamError) throw streamError
+
     } catch (e) {
-      setError(e.message)
-      setMessages(prev => prev.filter(m => m.id !== assistantMsgId))
+      const message = e?.message?.trim() || 'Something went wrong while generating the response.'
+      setError(message)
+      setMessages(prev => prev.map(m => {
+        if (m.id !== assistantMsgId) return m
+        return {
+          ...m,
+          content: `I couldn't complete this request.\n\nError: ${message}`,
+          isStreaming: false,
+          stepStatuses: Object.fromEntries(
+            Object.entries(m.stepStatuses).map(([k]) => [k, 'done'])
+          ),
+        }
+      }))
     } finally {
       setLoading(false)
       // Mark all steps done and stop streaming cursor

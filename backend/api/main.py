@@ -50,6 +50,20 @@ orchestrator = OrchestratorAgent()
 _session_index: dict[str, dict] = {}
 
 
+def _set_initial_preview(session_id: str, query: str) -> None:
+    """
+    Set the sidebar preview only once, using the first meaningful user message.
+    Subsequent turns keep the original chat title stable.
+    """
+    session_meta = _session_index.get(session_id)
+    if not session_meta:
+        return
+
+    current_preview = session_meta.get("preview", "")
+    if current_preview == "New conversation":
+        session_meta["preview"] = query[:60]
+
+
 def _get_or_create_session_context(session_id: str | None) -> SessionContext:
     """
     Get existing session context or create new one.
@@ -247,8 +261,7 @@ async def chat(session_id: str, request: ChatRequest):
     if state.error:
         raise HTTPException(status_code=500, detail=state.error)
 
-    # Update session preview for sidebar
-    _session_index[ctx.session_id]["preview"] = request.query[:60]
+    _set_initial_preview(ctx.session_id, request.query)
 
     return ChatResponse(
         session_id=ctx.session_id,
@@ -283,8 +296,7 @@ async def chat_stream(session_id: str, request: ChatRequest):
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # Update session preview
-    _session_index[ctx.session_id]["preview"] = request.query[:60]
+    _set_initial_preview(ctx.session_id, request.query)
 
     async def event_generator():
         async for event in orchestrator.run_streaming(state):
