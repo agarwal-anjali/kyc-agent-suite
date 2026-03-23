@@ -6,11 +6,13 @@ A multi-agent AI system for KYC compliance — document analysis, regulatory Q&A
 
 📄 **[Link to Technical Documentation](https://docs.google.com/document/d/1L80y2Ef69Xyxz11QpwQnDzCgKkpizxqvl4_0mP9x9ew/edit?usp=sharing)**
 
-This document contains details about the problem statement, features, agents, RAG pipeline, project architecture, deployment details, limitations, and future enhancements.
+This document contains details about the problem statement, features, case study, agents, RAG pipeline, project architecture, deployment details, limitations, and future enhancements.
 
 ## Try It Live!
 
 🌐 **[Link to Deployed App](http://13.212.149.181:3000)**
+
+![Product Preview](landing_page.png)
 
 ### Sample Questions to Try
 
