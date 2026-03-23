@@ -1,0 +1,58 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy frontend to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ~/kyc-agent-suite
+
+            # Pull latest code from main
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            cd frontend
+
+            # Install dependencies
+            npm ci
+
+            # Build with production settings
+            # VITE_USE_MOCK is forced false here regardless of .env.production
+            VITE_API_URL=http://${{ secrets.EC2_HOST }}:8000 \
+            VITE_USE_MOCK=false \
+            npm run build
+
+            # Restart nginx to serve the new build
+            docker stop kyc-frontend 2>/dev/null || true
+            docker rm   kyc-frontend 2>/dev/null || true
+
+            docker run -d \
+              --name kyc-frontend \
+              --restart always \
+              -p 3000:80 \
+              -v ~/kyc-agent-suite/frontend/dist:/usr/share/nginx/html:ro \
+              nginx:alpine
+
+            echo "Frontend deployed successfully"

@@ -1,0 +1,61 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:    # allows manual trigger from GitHub Actions UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key:      ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e   # stop on any error
+
+            cd ~/kyc-agent-suite
+
+            # Pull latest code from main
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            cd backend
+
+            # Recreate .env with production values from GitHub secrets
+            cat > .env << EOF
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            LLM_MODEL=gemini-3-flash-preview
+            VISION_MODEL=gemini-3-flash-preview
+            EMBEDDING_MODEL=gemini-embedding-001
+            QDRANT_URL=http://qdrant:6333
+            QDRANT_COLLECTION_NAME=kyc_regulatory_corpus
+            APP_ENV=production
+            LOG_LEVEL=INFO
+            FATF_COUNTRY_LIST_PATH=data/fatf_high_risk_countries.json
+            ALLOWED_ORIGINS=["http://${{ secrets.CLOUDFRONT_URL }}","http://localhost:3000"]
+            EOF
+
+            # Rebuild and restart only the API — Qdrant keeps running
+            docker-compose up -d --build api
+
+            # Wait for API to start
+            sleep 20
+
+            # Health check — fails the workflow if API is not responding
+            curl -f http://localhost:8000/health || exit 1
+
+            echo "Backend deployed successfully"
