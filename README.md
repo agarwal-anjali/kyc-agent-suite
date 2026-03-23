@@ -6,7 +6,7 @@ A multi-agent AI system for KYC compliance — document analysis, regulatory Q&A
 
 📄 **[Link to Technical Documentation](https://docs.google.com/document/d/1L80y2Ef69Xyxz11QpwQnDzCgKkpizxqvl4_0mP9x9ew/edit?usp=sharing)**
 
-This document contains details about the project architecture, agents, RAG pipeline, design decisions, and deployment details.
+This document contains details about the problem statement, features, agents, RAG pipeline, project architecture, deployment details, limitations, and future enhancements.
 
 ## Try It Live!
 
@@ -26,6 +26,30 @@ This document contains details about the project architecture, agents, RAG pipel
 **Attach identity documents + optionally fill in customer details**
 - *"Perform a full KYC check on this customer who wants to open an investment account."*
 - *"Run a KYC check and flag any enhanced due diligence requirements."*
+
+## Technology Stack
+
+### Backend
+- FastAPI for the API layer
+- LangGraph for multi-agent orchestration and stateful workflows
+- Pydantic for typed request, response, and agent data models
+- Qdrant as the vector database for regulatory retrieval
+- PyMuPDF for extracting text from PDF documents
+
+### Frontend
+- React for the user interface
+- Vite for frontend tooling and local development
+- Server-Sent Events (SSE) for real-time streaming responses
+- React Markdown for rendering formatted assistant responses
+
+### AI and Retrieval
+- Gemini 3 Flash for planning, document understanding, risk scoring, and report generation
+- `gemini-embedding-001` for embedding regulatory documents and search queries
+- Retrieval-Augmented Generation (RAG) over MAS and FATF regulatory corpora
+
+### Infrastructure
+- Docker Compose for running the backend API and Qdrant locally
+- AWS EC2 for deployment hosting
 
 ## Running Application Locally
 
@@ -134,4 +158,22 @@ To test against the real backend, set `VITE_USE_MOCK=false` in `.env.development
 
 In production builds, mock mode is automatically disabled (`import.meta.env.DEV` is false).
 
+## CI/CD Pipeline
 
+The project uses GitHub Actions to automate deployment of both the backend and frontend.
+
+### Backend Deployment
+- Triggered on pushes to `main` when backend files change
+- Connects to the EC2 instance over SSH
+- Pulls the latest code from `main`
+- Recreates the backend `.env` file from GitHub Secrets
+- Rebuilds and restarts only the API container using Docker Compose
+- Runs a health check to confirm the backend is live
+
+### Frontend Deployment
+- Triggered on pushes to `main` when frontend files change
+- Connects to the same EC2 instance over SSH
+- Pulls the latest code from `main`
+- Installs dependencies and builds the production frontend
+- Forces `VITE_USE_MOCK=false` during build
+- Restarts the nginx container serving the frontend on port `3000`
